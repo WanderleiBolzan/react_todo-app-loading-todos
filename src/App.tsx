@@ -7,7 +7,7 @@ import {
   getTodos,
   patchTodos,
   USER_ID,
-} from './api/todos';
+} from './api/todos'; // USER_ID ainda é exportado para a verificação inicial
 import { Todo } from './types/Todo';
 import { TodoList } from './components/TodoList';
 import { FormTodo } from './components/FormTodos/FormTodo';
@@ -26,8 +26,8 @@ export const App: React.FC = () => {
     getTodos()
       .then(setTodos)
       .catch(() => {
-        setError('Unable to load todos');
-        throw new Error('Cant find todos');
+        setError('Não foi possível carregar as tarefas.');
+        // Não lançar o erro novamente, setError já lida com a exibição.
       });
   }, []);
 
@@ -45,36 +45,36 @@ export const App: React.FC = () => {
 
   function postTodos(title: string) {
     if (title.trim().length === 0) {
-      setError('Title should not be empty');
+      setError('O título não pode estar vazio.');
 
       return;
     }
 
-    addTodos({ title, completed: false, userId: 3177 })
+    // Não é mais necessário passar userId
+    addTodos({ title, completed: false })
       .then(newTodo => setTodos(prev => [...prev, newTodo]))
       .catch(() => {
-        setError('Unable to add a todo');
-        throw new Error('Cant create new todos');
+        setError('Não foi possível adicionar a tarefa.');
       });
   }
 
   function removeTodos(todoId: number) {
+    // Retorna a Promise para que chamadas subsequentes possam encadeá-la
     return deleteTodo(todoId)
-      .then(() => getTodos())
+      .then(() => getTodos()) // Recarrega todas as tarefas após a exclusão
       .then(setTodos)
       .catch(() => {
-        setError('Unable to delete a todo');
-        throw new Error('Cant delete todos');
+        setError('Não foi possível excluir a tarefa.');
       });
   }
 
   function changeTodo(todoId: number, title: string, completed: boolean) {
-    return patchTodos({ id: todoId, title, completed, userId: 3177 })
-      .then(() => getTodos())
+    // Não é mais necessário passar userId
+    return patchTodos({ id: todoId, title, completed })
+      .then(() => getTodos()) // Recarrega todas as tarefas após a alteração
       .then(setTodos)
       .catch(() => {
-        setError('Unable to update a todo');
-        throw new Error('Cant change todos');
+        setError('Não foi possível atualizar a tarefa.');
       });
   }
 
@@ -85,13 +85,17 @@ export const App: React.FC = () => {
       completed: !isAllCompleted,
     }));
 
+    // Atualiza o estado local imediatamente para uma melhor experiência do usuário
     setTodos(updatedTodos);
 
+    // Envia as atualizações para a API.
+    // Garante que o patchTodos use o userId correto internamente.
     Promise.all(updatedTodos.map(todo => patchTodos(todo)))
-      .then(() => getTodos())
+      .then(() => getTodos()) // Recarrega para garantir consistência
       .then(setTodos)
       .catch(() => {
-        throw new Error('Cant change all todos');
+        setError('Não foi possível alterar o status de todas as tarefas.');
+        // Considerar um rollback do estado local aqui se o erro for crítico
       });
   }
 
@@ -103,11 +107,10 @@ export const App: React.FC = () => {
     const completedTodos = todos.filter(todo => todo.completed);
 
     Promise.all(completedTodos.map(todo => deleteTodo(todo.id)))
-      .then(() => getTodos())
+      .then(() => getTodos()) // Recarrega as tarefas após a limpeza
       .then(setTodos)
       .catch(() => {
-        setError('Unable to clear completed todos');
-        throw new Error('Cant clear completed todos');
+        setError('Não foi possível limpar as tarefas concluídas.');
       });
   }
 
@@ -121,7 +124,7 @@ export const App: React.FC = () => {
 
   return (
     <div className="todoapp">
-      <h1 className="todoapp__title">todos</h1>
+      <h1 className="todoapp__title">tarefas</h1>
 
       <div className="todoapp__content">
         <FormTodo
@@ -130,21 +133,21 @@ export const App: React.FC = () => {
           todos={todos}
         />
 
-        {todos.length > 0 && (
-          <TodoList
-            todos={filteredTodos}
-            deleteTodo={removeTodos}
-            changeTodo={changeTodo}
-          />
-        )}
+        {todos.length > 0 && ( // Condição única para ambos os componentes
+          <>
+            <TodoList
+              todos={filteredTodos}
+              deleteTodo={removeTodos}
+              changeTodo={changeTodo}
+            />
 
-        {todos.length > 0 && (
-          <FooterTodos
-            todos={todos}
-            filter={filter}
-            clearCompleted={clearCompleted}
-            selected={filterSelect}
-          />
+            <FooterTodos
+              todos={todos}
+              filter={filter}
+              clearCompleted={clearCompleted}
+              selected={filterSelect}
+            />
+          </>
         )}
       </div>
 
@@ -152,4 +155,3 @@ export const App: React.FC = () => {
     </div>
   );
 };
-//
